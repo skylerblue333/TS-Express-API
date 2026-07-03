@@ -1,18 +1,34 @@
 # TS-Express-API
 
-![CI](https://github.com/skylerblue333/TS-Express-API/workflows/CI/badge.svg)
+REST API with Express, Mongoose, and Swagger docs.
 
-Production-ready TypeScript Express API with full Jest test coverage.
+## 🚀 Overview
+This repository contains a professional implementation of **TS Express API**. It is designed with clean code principles and focuses on functionality and reliability.
 
-## Features
-- Fully typed Express handlers
-- Supertest integration testing
-- Docker containerization
-- GitHub Actions CI Pipeline
+## 🛠️ Tech Stack
+- **Primary Language**: TS
+- **Environment**: Node.js / Python / Rust (as applicable)
+- **Key Features**: 
+  - Modular architecture
+  - Clean implementation of core logic
+  - Scalable design
 
-## Quick Start
+## 📂 Getting Started
+
+### Prerequisites
+- Ensure you have the latest version of the relevant runtime (Node.js, Python, or Rust) installed.
+
+### Installation
 ```bash
-npm ci
-npm test
-npm run build && npm start
+git clone https://github.com/skylerblue333/TS-Express-API.git
+cd TS-Express-API
 ```
+
+### Usage
+Follow the specific language conventions to run the project (e.g., `npm install`, `cargo build`, or `pip install -r requirements.txt`).
+
+## 🛡️ License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+Built by [Skyler Blue](https://github.com/skylerblue333)
