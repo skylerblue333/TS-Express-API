@@ -73,6 +73,20 @@ app.get("/health", (_request: Request, response: Response) => {
   response.json({ status: "healthy", service: "ts-express-api", uptimeSeconds: Math.floor(process.uptime()) });
 });
 
+app.get("/metrics", async (_request: Request, response: Response) => {
+  try {
+    await loadStore();
+    response.json({
+      service: "ts-express-api",
+      uptimeSeconds: Math.floor(process.uptime()),
+      recordCount: records.length,
+      memory: { rssBytes: process.memoryUsage().rss, heapUsedBytes: process.memoryUsage().heapUsed },
+    });
+  } catch {
+    response.status(503).json({ error: "data store unavailable" });
+  }
+});
+
 app.get("/ready", async (_request: Request, response: Response) => {
   try {
     await loadStore();

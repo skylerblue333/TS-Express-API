@@ -9,6 +9,13 @@ describe("Express API", () => {
     expect(res.headers["x-request-id"]).toBeTruthy();
   });
 
+  it("GET /metrics reports measured runtime and record facts", async () => {
+    const res = await request(app).get("/metrics");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(expect.objectContaining({ service: "ts-express-api", uptimeSeconds: expect.any(Number), recordCount: expect.any(Number) }));
+    expect(res.body.memory).toEqual(expect.objectContaining({ rssBytes: expect.any(Number), heapUsedBytes: expect.any(Number) }));
+  });
+
   it("GET /ready reports file persistence", async () => {
     const res = await request(app).get("/ready");
     expect(res.status).toBe(200);

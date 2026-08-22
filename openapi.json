@@ -12,6 +12,12 @@
         "responses": { "200": { "description": "Service is running" } }
       }
     },
+    "/metrics": {
+      "get": {
+        "summary": "Measured runtime metrics",
+        "responses": { "200": { "description": "Runtime and persisted-record metrics returned" }, "503": { "description": "Store unavailable" } }
+      }
+    },
     "/ready": {
       "get": {
         "summary": "Persistence readiness check",
