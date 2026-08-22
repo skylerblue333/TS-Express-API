@@ -1,0 +1,62 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TS Express API",
+    "version": "1.0.0",
+    "description": "Verified local file-backed data service. This contract does not represent the full SKYCOIN4444 ecosystem."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness check",
+        "responses": { "200": { "description": "Service is running" } }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Persistence readiness check",
+        "responses": { "200": { "description": "Store is readable" }, "503": { "description": "Store unavailable" } }
+      }
+    },
+    "/api/data": {
+      "get": {
+        "summary": "List newest records",
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }],
+        "responses": { "200": { "description": "Records returned" }, "400": { "description": "Invalid limit" }, "503": { "description": "Store unavailable" } }
+      },
+      "post": {
+        "summary": "Create a record",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateRecord" } } } },
+        "responses": { "201": { "description": "Record created" }, "400": { "description": "Invalid payload" }, "503": { "description": "Store unavailable" } }
+      }
+    },
+    "/api/data/{id}": {
+      "get": {
+        "summary": "Read a record",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "Record returned" }, "404": { "description": "Record not found" }, "503": { "description": "Store unavailable" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateRecord": {
+        "type": "object",
+        "required": ["payload"],
+        "properties": {
+          "payload": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": true }] }
+        },
+        "additionalProperties": false
+      },
+      "DataRecord": {
+        "type": "object",
+        "required": ["id", "payload", "createdAt"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "payload": { "oneOf": [{ "type": "string" }, { "type": "object", "additionalProperties": true }] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}
