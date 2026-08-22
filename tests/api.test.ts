@@ -27,6 +27,17 @@ describe("Express API", () => {
     expect(fetched.body).toEqual(expect.objectContaining({ id: created.body.id, payload: "test_data" }));
   });
 
+  it("GET /api/data lists newest records first and enforces limit bounds", async () => {
+    const first = await request(app).post("/api/data").send({ payload: "first" });
+    const second = await request(app).post("/api/data").send({ payload: "second" });
+    const listed = await request(app).get("/api/data?limit=1");
+    expect(listed.status).toBe(200);
+    expect(listed.body).toEqual({ items: [expect.objectContaining({ id: second.body.id, payload: "second" })], count: 1, limit: 1 });
+    expect((await request(app).get("/api/data?limit=0")).status).toBe(400);
+    expect((await request(app).get("/api/data?limit=101")).status).toBe(400);
+    expect(first.body.id).not.toBe(second.body.id);
+  });
+
   it("POST /api/data persists an object payload", async () => {
     const res = await request(app).post("/api/data").send({ payload: { source: "integration-test", version: 1 } });
     expect(res.status).toBe(201);

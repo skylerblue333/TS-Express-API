@@ -82,6 +82,20 @@ app.get("/ready", async (_request: Request, response: Response) => {
   }
 });
 
+app.get("/api/data", async (request: Request, response: Response) => {
+  const rawLimit = request.query.limit;
+  const limit = rawLimit === undefined ? 50 : Number(rawLimit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) return response.status(400).json({ error: "limit must be an integer between 1 and 100" });
+
+  try {
+    await loadStore();
+    const result = records.slice(-limit).reverse();
+    return response.json({ items: result, count: result.length, limit });
+  } catch {
+    return response.status(503).json({ error: "data store unavailable" });
+  }
+});
+
 app.post("/api/data", async (request: Request, response: Response) => {
   const body: unknown = request.body;
   const payload = isJsonObject(body) ? body.payload : undefined;

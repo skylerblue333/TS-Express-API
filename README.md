@@ -4,7 +4,7 @@ A small, typed Express service that provides a verifiable foundation for server-
 
 ## Implemented behavior
 
-`GET /health` returns a liveness response and an `x-request-id` response header. `GET /ready` loads and validates the configured file store and reports the current persistence mode. `POST /api/data` accepts a non-empty string or JSON object under `payload`, rejects unsupported or missing values, limits JSON bodies to 64 KB, writes a typed record using an atomic temporary-file rename, returns its generated ID and timestamp, and preserves the legacy `received` response field. `GET /api/data/:id` retrieves a persisted record or returns `404`.
+`GET /health` returns a liveness response and an `x-request-id` response header. `GET /ready` loads and validates the configured file store and reports the current persistence mode. `POST /api/data` accepts a non-empty string or JSON object under `payload`, rejects unsupported or missing values, limits JSON bodies to 64 KB, writes a typed record using an atomic temporary-file rename, returns its generated ID and timestamp, and preserves the legacy `received` response field. `GET /api/data?limit=N` lists up to 100 newest records first, defaulting to 50, and rejects invalid limits. `GET /api/data/:id` retrieves a persisted record or returns `404`.
 
 The service uses `DATA_STORE_PATH` when provided and otherwise writes to `.data/records.json`. The store is intentionally simple and local; it does not claim multi-process database semantics.
 
