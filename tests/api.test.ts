@@ -2,11 +2,19 @@ import request from "supertest";
 import app from "../src/index";
 
 describe("Express API", () => {
-  it("GET /health returns 200", async () => {
+  it("GET /health returns 200 with request and security headers", async () => {
     const res = await request(app).get("/health");
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("healthy");
     expect(res.headers["x-request-id"]).toBeTruthy();
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+    expect(res.headers["x-frame-options"]).toBe("DENY");
+    expect(res.headers["referrer-policy"]).toBe("no-referrer");
+  });
+
+  it("preserves a bounded incoming request id", async () => {
+    const res = await request(app).get("/health").set("x-request-id", "integration-123");
+    expect(res.headers["x-request-id"]).toBe("integration-123");
   });
 
   it("GET /metrics reports measured runtime and record facts", async () => {
@@ -55,6 +63,16 @@ describe("Express API", () => {
     expect((await request(app).post("/api/data").send({})).status).toBe(400);
     expect((await request(app).post("/api/data").send({ payload: 42 })).status).toBe(400);
     expect((await request(app).post("/api/data").send({ payload: [] })).status).toBe(400);
+  });
+
+  it("returns JSON for malformed bodies and unknown routes", async () => {
+    const malformed = await request(app).post("/api/data").set("content-type", "application/json").send('{"payload":');
+    expect(malformed.status).toBe(400);
+    expect(malformed.body).toEqual({ error: "invalid JSON payload" });
+
+    const missing = await request(app).get("/does-not-exist");
+    expect(missing.status).toBe(404);
+    expect(missing.body).toEqual({ error: "route not found" });
   });
 
   it("GET /api/data/:id returns 404 for an unknown record", async () => {
