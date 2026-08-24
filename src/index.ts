@@ -1,5 +1,5 @@
 import cors from "cors";
-import express, { type Express, type Request, type Response } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -17,6 +17,7 @@ const maxPayloadBytes = 64 * 1024;
 const dataStorePath = resolve(process.env.DATA_STORE_PATH ?? ".data/records.json");
 let records: DataRecord[] = [];
 let storeLoaded = false;
+let persistTail: Promise<void> = Promise.resolve();
 
 function allowedOrigins(): string[] | boolean {
   const configured = process.env.CORS_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean);
@@ -49,21 +50,39 @@ async function loadStore(): Promise<void> {
 }
 
 async function persistStore(): Promise<void> {
-  await mkdir(dirname(dataStorePath), { recursive: true });
-  const temporaryPath = `${dataStorePath}.${process.pid}.${randomUUID()}.tmp`;
-  await writeFile(temporaryPath, `${JSON.stringify(records, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-  await rename(temporaryPath, dataStorePath);
+  const snapshot = `${JSON.stringify(records, null, 2)}\n`;
+  persistTail = persistTail.then(async () => {
+    await mkdir(dirname(dataStorePath), { recursive: true });
+    const temporaryPath = `${dataStorePath}.${process.pid}.${randomUUID()}.tmp`;
+    await writeFile(temporaryPath, snapshot, { encoding: "utf8", mode: 0o600 });
+    await rename(temporaryPath, dataStorePath);
+  });
+  return persistTail;
 }
 
 function requestId(request: Request): string {
-  return request.header("x-request-id")?.trim() || randomUUID();
+  const incoming = request.header("x-request-id")?.trim();
+  return incoming && incoming.length <= 128 ? incoming : randomUUID();
+}
+
+function runtimePort(): number {
+  const configured = Number(process.env.PORT ?? 3000);
+  return Number.isInteger(configured) && configured >= 1 && configured <= 65535 ? configured : 3000;
 }
 
 export const app: Express = express();
 app.disable("x-powered-by");
 app.use((request, response, next) => {
   const id = requestId(request);
+  const started = process.hrtime.bigint();
   response.setHeader("x-request-id", id);
+  response.setHeader("x-content-type-options", "nosniff");
+  response.setHeader("x-frame-options", "DENY");
+  response.setHeader("referrer-policy", "no-referrer");
+  response.on("finish", () => {
+    const elapsedMs = Number(process.hrtime.bigint() - started) / 1_000_000;
+    console.log(JSON.stringify({ event: "request", requestId: id, method: request.method, path: request.path, status: response.statusCode, durationMs: Math.round(elapsedMs * 100) / 100 }));
+  });
   next();
 });
 app.use(cors({ origin: allowedOrigins() }));
@@ -136,5 +155,21 @@ app.get("/api/data/:id", async (request: Request, response: Response) => {
   }
 });
 
-if (require.main === module) app.listen(Number(process.env.PORT ?? 3000), () => console.log("API listening"));
+app.use((_request: Request, response: Response) => {
+  response.status(404).json({ error: "route not found" });
+});
+
+app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+  if (error instanceof SyntaxError) {
+    response.status(400).json({ error: "invalid JSON payload" });
+    return;
+  }
+  console.error(JSON.stringify({ event: "request_error", message: error instanceof Error ? error.message : "unknown error" }));
+  response.status(500).json({ error: "internal server error" });
+});
+
+if (require.main === module) {
+  const port = runtimePort();
+  app.listen(port, "0.0.0.0", () => console.log(JSON.stringify({ event: "start", service: "ts-express-api", port })));
+}
 export default app;
