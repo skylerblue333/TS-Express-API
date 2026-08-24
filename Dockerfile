@@ -5,7 +5,7 @@ RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
 RUN pnpm install --frozen-lockfile
 COPY tsconfig.json ./
 COPY src ./src
-RUN pnpm build
+RUN pnpm build && pnpm prune --prod
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
@@ -13,6 +13,7 @@ ENV NODE_ENV=production
 ENV PORT=3000
 RUN groupadd --system app && useradd --system --gid app app
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 RUN mkdir -p /app/.data && chown -R app:app /app
 USER app
