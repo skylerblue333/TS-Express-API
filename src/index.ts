@@ -51,13 +51,14 @@ async function loadStore(): Promise<void> {
 
 async function persistStore(): Promise<void> {
   const snapshot = `${JSON.stringify(records, null, 2)}\n`;
-  persistTail = persistTail.then(async () => {
+  const currentWrite = persistTail.catch(() => undefined).then(async () => {
     await mkdir(dirname(dataStorePath), { recursive: true });
     const temporaryPath = `${dataStorePath}.${process.pid}.${randomUUID()}.tmp`;
     await writeFile(temporaryPath, snapshot, { encoding: "utf8", mode: 0o600 });
     await rename(temporaryPath, dataStorePath);
   });
-  return persistTail;
+  persistTail = currentWrite;
+  return currentWrite;
 }
 
 function requestId(request: Request): string {
@@ -68,6 +69,12 @@ function requestId(request: Request): string {
 function runtimePort(): number {
   const configured = Number(process.env.PORT ?? 3000);
   return Number.isInteger(configured) && configured >= 1 && configured <= 65535 ? configured : 3000;
+}
+
+function httpStatus(error: unknown): number | undefined {
+  if (!isJsonObject(error)) return undefined;
+  const status = error.status ?? error.statusCode;
+  return typeof status === "number" && Number.isInteger(status) && status >= 400 && status <= 599 ? status : undefined;
 }
 
 export const app: Express = express();
@@ -160,6 +167,11 @@ app.use((_request: Request, response: Response) => {
 });
 
 app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+  const status = httpStatus(error);
+  if (status === 413) {
+    response.status(413).json({ error: "JSON payload exceeds 64 KB limit" });
+    return;
+  }
   if (error instanceof SyntaxError) {
     response.status(400).json({ error: "invalid JSON payload" });
     return;
