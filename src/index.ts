@@ -49,13 +49,15 @@ async function loadStore(): Promise<void> {
   storeLoaded = true;
 }
 
-async function persistStore(): Promise<void> {
-  const snapshot = `${JSON.stringify(records, null, 2)}\n`;
+async function persistRecord(record: DataRecord): Promise<void> {
   const currentWrite = persistTail.catch(() => undefined).then(async () => {
+    const nextRecords = [...records, record];
+    const snapshot = `${JSON.stringify(nextRecords, null, 2)}\n`;
     await mkdir(dirname(dataStorePath), { recursive: true });
     const temporaryPath = `${dataStorePath}.${process.pid}.${randomUUID()}.tmp`;
     await writeFile(temporaryPath, snapshot, { encoding: "utf8", mode: 0o600 });
     await rename(temporaryPath, dataStorePath);
+    records = nextRecords;
   });
   persistTail = currentWrite;
   return currentWrite;
@@ -144,8 +146,7 @@ app.post("/api/data", async (request: Request, response: Response) => {
   try {
     await loadStore();
     const record: DataRecord = { id: randomUUID(), payload, createdAt: new Date().toISOString() };
-    records.push(record);
-    await persistStore();
+    await persistRecord(record);
     return response.status(201).json({ ...record, received: payload });
   } catch {
     return response.status(503).json({ error: "data store unavailable" });
