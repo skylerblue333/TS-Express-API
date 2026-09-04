@@ -65,10 +65,17 @@ describe("Express API", () => {
     expect((await request(app).post("/api/data").send({ payload: [] })).status).toBe(400);
   });
 
-  it("returns JSON for malformed bodies and unknown routes", async () => {
+  it("returns JSON for malformed and oversized bodies and unknown routes", async () => {
     const malformed = await request(app).post("/api/data").set("content-type", "application/json").send('{"payload":');
     expect(malformed.status).toBe(400);
     expect(malformed.body).toEqual({ error: "invalid JSON payload" });
+
+    const oversized = await request(app)
+      .post("/api/data")
+      .set("content-type", "application/json")
+      .send(JSON.stringify({ payload: "x".repeat(70 * 1024) }));
+    expect(oversized.status).toBe(413);
+    expect(oversized.body).toEqual({ error: "JSON payload exceeds 64 KB limit" });
 
     const missing = await request(app).get("/does-not-exist");
     expect(missing.status).toBe(404);
